@@ -247,6 +247,103 @@
           return code + ((10 - sum % 10) % 10).toString() + (addon ? ' ' + addon : '');
         }
       },
+			upce : {
+				encoding: [
+					['0001101', '0100111'],
+					['0011001', '0110011'],
+					['0010011', '0011011'],
+					['0111101', '0100001'],
+					['0100011', '0011101'],
+					['0110001', '0111001'],
+					['0101111', '0000101'],
+					['0111011', '0010001'],
+					['0110111', '0001001'],
+					['0001011', '0010111'],
+				],
+				parities: [
+					["EEEOOO", "OOOEEE"],
+					["EEOEOO", "OOEOEE"],
+					["EEOOEO", "OOEEOE"],
+					["EEOOOE", "OOEEEO"],
+					["EOEEOO", "OEOOEE"],
+					["EOOEEO", "OEEOOE"],
+					["EOOOEE", "OEEEOO"],
+					["EOEOEO", "OEOEOE"],
+					["EOEOOE", "OEOEEO"],
+					["EOOEOE", "OEEOEO"]
+				],
+				getDigit: function (code) {
+					var self = this;
+					var upca,base,cd,i;
+					base = self.getbase(code);
+					if (base == '') return '';
+				  upca = self.convertUPCA(base);
+					cd = barcode.ean.compute(upca, 'ean13').substring(11,12);
+					var result,index,ptt,sy,pt;
+					sy = base.substring(0,1);
+					ptt = self.parities[intval(cd)][intval(sy)];
+					//start
+					result = '101';
+					for (i = 1; i < base.length; i++) {
+						if (ptt[i-1] === 'E') {
+							pt = 1;
+						}
+						else {
+							pt = 0;
+						}
+						result += this.encoding[intval(base.charAt(i))][pt];
+					}
+					//stop
+					result += '010101';
+					return result;
+				},
+				compute:function (code) {
+					var self = this;
+					var upca,base,cd;
+					base = self.getbase(code);
+					if (base == '') return '';
+				  upca = self.convertUPCA(base);
+					cd = barcode.ean.compute(upca,'ean13').substring(11,12);
+					return base + cd;
+				},
+				convertUPCA: function(code) {
+					var c,result;
+					c = code.charAt(6);
+					switch (c) {
+						case '0':
+						case '1':
+						case '2':
+							result = code.substring(0,3)+c+'0000'+code.substring(3,6);
+							break;
+						case '3':
+							result = code.substring(0,4)+'00000'+code.substring(4,6);
+							break;
+						case '4':
+							result = code.substring(0,5)+'00000'+code.substring(5,6);
+							break;
+						default:
+							result = code.substring(0,6)+'0000'+c;
+							break;
+					}
+					return result;
+				},
+				getbase: function(code) {
+					var base;
+					if (code.match(new RegExp('^[0-9]{6}$'))) {
+						base = '0' + code;
+					}
+					else if (code.match(new RegExp('^[01][0-9]{6}$'))) {
+						base = code;
+					}
+					else if (code.match(new RegExp('^[01][0-9]{7}$'))) {
+						base = code.substring(0,7);
+					}
+					else {
+						return '';
+					}
+					return base;
+				}
+			},
       upc: {
         getDigit: function (code) {
           if (code.length < 12) {
@@ -1378,6 +1475,10 @@
         case 'upc':
           digit = barcode.upc.getDigit(code);
           hri = barcode.upc.compute(code);
+          break;
+        case 'upce':
+          digit = barcode.upce.getDigit(code);
+          hri = barcode.upce.compute(code);
           break;
         case 'code11':
           digit = barcode.code11.getDigit(code);
